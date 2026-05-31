@@ -45,3 +45,6 @@ example
 
 /package-lock.json
 /yarn.lock
+
+# Ensure package-lock.json is ignored at repo root and any subfolders
+**/package-lock.json
