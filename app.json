@@ -34,10 +34,11 @@
             "imageWidth": 76
           }
         }
-      ]
+      ],
+      "expo-secure-store"
     ],
     "experiments": {
-      "typedRoutes": true,
+      "typedRoutes": false,
       "reactCompiler": true
     }
   }
