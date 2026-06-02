@@ -1,0 +1,219 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Auth service functions (per-function packaging recommended)
+
+Parameters:
+  UsersTableName:
+    Type: String
+    Default: Users
+  SessionsTableName:
+    Type: String
+    Default: Sessions
+  TermsTableName:
+    Type: String
+    Default: Terms
+  UserTermsTableName:
+    Type: String
+    Default: UserTerms
+  FirebaseSecretArn:
+    Type: String
+    Default: arn:aws:secretsmanager:ap-southeast-2:488347380086:secret:auth-app/firebase-service-account-M8KojI
+  JwtSecretArn:
+    Type: String
+    Default: arn:aws:secretsmanager:ap-southeast-2:488347380086:secret:auth-app/jwt-keys-ckbJTj  
+  JwtIssuer:
+    Type: String
+    Default: auth-app-expo
+  JwtAudience:
+    Type: String
+    Default: auth-app-expo-users
+  AccessTokenExpiresSeconds:
+    Type: Number
+    Default: '900'
+  RefreshTokenExpiresSeconds:
+    Type: Number
+    Default: '1209600'
+
+Globals:
+  Function:
+    Runtime: nodejs24.x
+    Timeout: 10
+    MemorySize: 256
+
+Resources:
+  AuthRegisterFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: auth-register-function
+      Handler: functions/register/handler.handler
+      CodeUri: .
+      Environment:
+        Variables:
+          DYNAMO_USERS_TABLE: !Ref UsersTableName
+          DYNAMO_SESSIONS_TABLE: !Ref SessionsTableName
+          DYNAMO_TERMS_TABLE: !Ref TermsTableName
+          DYNAMO_USER_TERMS_TABLE: !Ref UserTermsTableName
+          FIREBASE_SERVICE_ACCOUNT_SECRET_ID: auth-app/firebase-service-account
+          JWT_PRIVATE_KEY_SECRET_ID: auth-app/jwt-keys
+          JWT_ISSUER: !Ref JwtIssuer
+          JWT_AUDIENCE: !Ref JwtAudience
+          ACCESS_TOKEN_EXPIRES_SECONDS: !Ref AccessTokenExpiresSeconds
+          REFRESH_TOKEN_EXPIRES_SECONDS: !Ref RefreshTokenExpiresSeconds
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UsersTableName
+        - DynamoDBCrudPolicy:
+            TableName: !Ref SessionsTableName
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TermsTableName
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UserTermsTableName
+        - Statement:
+            - Effect: Allow
+              Action: secretsmanager:GetSecretValue
+              Resource:
+                - arn:aws:secretsmanager:ap-southeast-2:488347380086:secret:auth-app/jwt-keys*
+                - arn:aws:secretsmanager:ap-southeast-2:488347380086:secret:auth-app/firebase*
+      # No Api event here to avoid creating a RestApi resource that may require extra IAM permissions.
+
+  AuthLoginFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: auth-login-function
+      Handler: functions/login/handler.handler
+      CodeUri: .
+      Environment:
+        Variables:
+          DYNAMO_USERS_TABLE: !Ref UsersTableName
+          DYNAMO_SESSIONS_TABLE: !Ref SessionsTableName
+          JWT_PRIVATE_KEY_SECRET_ID: auth-app/jwt-keys
+          JWT_ISSUER: !Ref JwtIssuer
+          JWT_AUDIENCE: !Ref JwtAudience
+          ACCESS_TOKEN_EXPIRES_SECONDS: !Ref AccessTokenExpiresSeconds
+          REFRESH_TOKEN_EXPIRES_SECONDS: !Ref RefreshTokenExpiresSeconds
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UsersTableName
+        - DynamoDBCrudPolicy:
+            TableName: !Ref SessionsTableName
+        - Statement:
+            - Effect: Allow
+              Action: secretsmanager:GetSecretValue
+              Resource:
+              - arn:aws:secretsmanager:ap-southeast-2:488347380086:secret:auth-app/jwt-keys*
+              - arn:aws:secretsmanager:ap-southeast-2:488347380086:secret:auth-app/firebase*
+      # No Api event here to avoid creating a RestApi resource that may require extra IAM permissions.
+
+  AuthRefreshFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: auth-refresh-function
+      Handler: functions/refresh/handler.handler
+      CodeUri: .
+      Environment:
+        Variables:
+          DYNAMO_USERS_TABLE: !Ref UsersTableName
+          DYNAMO_SESSIONS_TABLE: !Ref SessionsTableName
+          JWT_PRIVATE_KEY_SECRET_ID: auth-app/jwt-keys
+          JWT_ISSUER: !Ref JwtIssuer
+          JWT_AUDIENCE: !Ref JwtAudience
+          ACCESS_TOKEN_EXPIRES_SECONDS: !Ref AccessTokenExpiresSeconds
+          REFRESH_TOKEN_EXPIRES_SECONDS: !Ref RefreshTokenExpiresSeconds
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UsersTableName
+        - DynamoDBCrudPolicy:
+            TableName: !Ref SessionsTableName
+        - Statement:
+            - Effect: Allow
+              Action: secretsmanager:GetSecretValue
+              Resource:
+              - arn:aws:secretsmanager:ap-southeast-2:488347380086:secret:auth-app/jwt-keys*
+              - arn:aws:secretsmanager:ap-southeast-2:488347380086:secret:auth-app/firebase*
+      # No Api event here to avoid creating a RestApi resource that may require extra IAM permissions.
+
+  AuthLogoutFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: auth-logout-function
+      Handler: functions/logout/handler.handler
+      CodeUri: .
+      Environment:
+        Variables:
+          DYNAMO_SESSIONS_TABLE: !Ref SessionsTableName
+          JWT_PRIVATE_KEY_SECRET_ID: auth-app/jwt-keys
+          JWT_ISSUER: !Ref JwtIssuer
+          JWT_AUDIENCE: !Ref JwtAudience
+          ACCESS_TOKEN_EXPIRES_SECONDS: !Ref AccessTokenExpiresSeconds
+          REFRESH_TOKEN_EXPIRES_SECONDS: !Ref RefreshTokenExpiresSeconds
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref SessionsTableName
+      
+
+  AuthTermsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: auth-terms-function
+      Handler: functions/terms/handler.handler
+      CodeUri: .
+      Environment:
+        Variables:
+          DYNAMO_TERMS_TABLE: !Ref TermsTableName
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TermsTableName
+      
+
+  AuthUserTermsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: auth-user-terms-function
+      Handler: functions/user-terms/handler.handler
+      CodeUri: .
+      Environment:
+        Variables:
+          DYNAMO_USER_TERMS_TABLE: !Ref UserTermsTableName
+          JWT_PRIVATE_KEY_SECRET_ID: auth-app/jwt-keys
+          JWT_ISSUER: !Ref JwtIssuer
+          JWT_AUDIENCE: !Ref JwtAudience
+          ACCESS_TOKEN_EXPIRES_SECONDS: !Ref AccessTokenExpiresSeconds
+          REFRESH_TOKEN_EXPIRES_SECONDS: !Ref RefreshTokenExpiresSeconds
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UserTermsTableName
+        - Statement:
+            - Effect: Allow
+              Action: secretsmanager:GetSecretValue
+              Resource:
+              - arn:aws:secretsmanager:ap-southeast-2:488347380086:secret:auth-app/jwt-keys*
+              - arn:aws:secretsmanager:ap-southeast-2:488347380086:secret:auth-app/firebase*
+      
+
+  AuthProfileFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: auth-profile-function
+      Handler: functions/profile/handler.handler
+      CodeUri: .
+      Environment:
+        Variables:
+          DYNAMO_USER_TERMS_TABLE: !Ref UserTermsTableName
+          DYNAMO_USERS_TABLE: !Ref UsersTableName
+          JWT_PRIVATE_KEY_SECRET_ID: auth-app/jwt-keys
+          JWT_ISSUER: !Ref JwtIssuer
+          JWT_AUDIENCE: !Ref JwtAudience
+          ACCESS_TOKEN_EXPIRES_SECONDS: !Ref AccessTokenExpiresSeconds
+          REFRESH_TOKEN_EXPIRES_SECONDS: !Ref RefreshTokenExpiresSeconds
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UserTermsTableName
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UsersTableName
+        - Statement:
+            - Effect: Allow
+              Action: secretsmanager:GetSecretValue
+              Resource:
+              - arn:aws:secretsmanager:ap-southeast-2:488347380086:secret:auth-app/jwt-keys*
+              - arn:aws:secretsmanager:ap-southeast-2:488347380086:secret:auth-app/firebase*      
+      

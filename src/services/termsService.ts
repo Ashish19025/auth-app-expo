@@ -1,14 +1,12 @@
 import { DEFAULT_TERMS } from "@/constants/terms";
 import { apiClient, getApiBaseUrl } from "@/services/api";
+import { getStoredSession } from "@/services/storage";
 import { TermsItem, TermsSelections } from "@/types/terms";
 
 export async function fetchTerms(): Promise<TermsItem[]> {
-  if (!getApiBaseUrl()) {
-    return DEFAULT_TERMS;
-  }
-
-  const response = await apiClient.get<{ terms: TermsItem[] }>("/terms");
-  return response.data.terms;
+  // Use frontend-defined terms (DEFAULT_TERMS) as the source of truth.
+  // Backend /terms is intentionally ignored — only save selections to the backend.
+  return DEFAULT_TERMS;
 }
 
 export async function saveTermsSelection(userId: string, selections: TermsSelections): Promise<void> {
@@ -21,5 +19,19 @@ export async function saveTermsSelection(userId: string, selections: TermsSelect
     accepted: selected,
   }));
 
-  await apiClient.post("/user/terms", { userId, accepted });
+  try {
+    const session = await getStoredSession();
+    const accessToken = session.tokens?.accessToken;
+    const headers = accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined;
+
+    await apiClient.post("/user/terms", { userId, accepted }, headers ? { headers } : undefined);
+  } catch (error) {
+    const status = (error as { response?: { status?: number } })?.response?.status;
+
+    if (status === 404) {
+      return;
+    }
+
+    throw error;
+  }
 }

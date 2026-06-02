@@ -48,3 +48,6 @@ example
 
 # Ensure package-lock.json is ignored at repo root and any subfolders
 **/package-lock.json
+
+# EAS credentials (contains sensitive keystore passwords)
+credentials.json

@@ -1,0 +1,25 @@
+{
+  "name": "auth-app-auth-lambdas",
+  "version": "1.0.0",
+  "private": true,
+  "main": "functions/login/handler.js",
+  "type": "commonjs",
+  "scripts": {
+    "test:register": "node functions/register/handler.js",
+    "test:login": "node functions/login/handler.js",
+    "test:refresh": "node functions/refresh/handler.js",
+    "test:logout": "node functions/logout/handler.js",
+    "test:terms": "node functions/terms/handler.js",
+    "test:user-terms": "node functions/user-terms/handler.js",
+    "test:profile": "node functions/profile/handler.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.858.0",
+    "@aws-sdk/client-secrets-manager": "^3.858.0",
+    "@aws-sdk/lib-dynamodb": "^3.858.0",
+    "bcryptjs": "^3.0.2",
+    "firebase-admin": "^13.5.0",
+    "jsonwebtoken": "^9.0.2",
+    "zod": "^3.25.76"
+  }
+}

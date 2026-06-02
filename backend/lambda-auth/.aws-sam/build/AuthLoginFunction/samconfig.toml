@@ -1,0 +1,31 @@
+version = 0.1
+
+[default.deploy.parameters]
+confirm_changeset = true
+resolve_s3 = true
+capabilities = "CAPABILITY_IAM CAPABILITY_NAMED_IAM"
+s3_prefix = "auth-stack"
+parameter_overrides = "UsersTableName=\"Users\" SessionsTableName=\"Sessions\" TermsTableName=\"Terms\" UserTermsTableName=\"UserTerms\" FirebaseSecretArn=\"arn:aws:secretsmanager:ap-southeast-2:488347380086:secret:auth-app/firebase-service-account-M8KojI\" JwtSecretArn=\"arn:aws:secretsmanager:ap-southeast-2:488347380086:secret:auth-app/jwt-keys-ckbJTj\" JwtIssuer=\"auth-app-expo\" JwtAudience=\"auth-app-expo-users\" AccessTokenExpiresSeconds=\"900\" RefreshTokenExpiresSeconds=\"1209600\""
+image_repositories = []
+
+[default.global.parameters]
+region = "ap-southeast-2"
+stack_name = "auth-stack"
+
+[default.sync.parameters]
+template_file = "c:\\Users\\ashis\\Documents\\auth-app-expo\\backend\\lambda-auth\\template.yaml"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-5u5qo8vksxzz"
+dependency_layer = false
+watch = true
+
+[default.sync.parameters.parameter_overrides]
+UsersTableName = "Users"
+SessionsTableName = "Sessions"
+TermsTableName = "Terms"
+UserTermsTableName = "UserTerms"
+FirebaseSecretArn = "arn:aws:secretsmanager:ap-southeast-2:488347380086:secret:auth-app/firebase-service-account-M8KojI"
+JwtSecretArn = "arn:aws:secretsmanager:ap-southeast-2:488347380086:secret:auth-app/jwt-keys-ckbJTj"
+JwtIssuer = "auth-app-expo"
+JwtAudience = "auth-app-expo-users"
+AccessTokenExpiresSeconds = "900"
+RefreshTokenExpiresSeconds = "1209600"

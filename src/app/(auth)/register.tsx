@@ -14,7 +14,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { requestPhoneOtp, verifyPhoneOtp } from "@/services/firebase";
 import { fetchTerms, saveTermsSelection } from "@/services/termsService";
 import { TermsItem, TermsSelections } from "@/types/terms";
-import { isStrongPassword, isValidEmail, isValidPhone } from "@/utils/validators";
+import {
+  isStrongPassword,
+  isValidEmail,
+  isValidPhone,
+} from "@/utils/validators";
 
 type RegisterForm = {
   name: string;
@@ -57,7 +61,10 @@ export default function RegisterScreen() {
     loadTerms();
   }, []);
 
-  const canVerifyOtp = useMemo(() => !!verificationId && form.otpCode.trim().length >= 4, [verificationId, form.otpCode]);
+  const canVerifyOtp = useMemo(
+    () => !!verificationId && form.otpCode.trim().length >= 4,
+    [verificationId, form.otpCode],
+  );
 
   function validate(values: RegisterForm) {
     const next: Partial<RegisterForm> = {};
@@ -90,7 +97,10 @@ export default function RegisterScreen() {
     setSubmitError("");
 
     if (!isValidPhone(form.phone)) {
-      setErrors((prev) => ({ ...prev, phone: "Use phone format like +919999999999." }));
+      setErrors((prev) => ({
+        ...prev,
+        phone: "Use phone format like +919999999999.",
+      }));
       return;
     }
 
@@ -99,7 +109,9 @@ export default function RegisterScreen() {
       const id = await requestPhoneOtp(form.phone);
       setVerificationId(id);
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : "OTP request failed.");
+      setSubmitError(
+        error instanceof Error ? error.message : "OTP request failed.",
+      );
     } finally {
       setLoadingOtp(false);
     }
@@ -113,11 +125,15 @@ export default function RegisterScreen() {
     try {
       setLoadingVerify(true);
       const token = await verifyPhoneOtp(verificationId, form.otpCode.trim());
+      console.log("TOKEN RECEIVED:", token);
+      console.log("TOKEN LENGTH:", token?.length);
       setFirebaseIdToken(token);
       setSubmitError("");
     } catch (error) {
       setFirebaseIdToken("");
-      setSubmitError(error instanceof Error ? error.message : "OTP verification failed.");
+      setSubmitError(
+        error instanceof Error ? error.message : "OTP verification failed.",
+      );
     } finally {
       setLoadingVerify(false);
     }
@@ -143,6 +159,15 @@ export default function RegisterScreen() {
   async function handleConfirmTerms(selections: TermsSelections) {
     try {
       setLoadingRegister(true);
+      console.log("firebaseIdToken before register:", firebaseIdToken);
+      console.log("firebaseIdToken length:", firebaseIdToken?.length);
+      console.log("REGISTER START");
+      console.log({
+       name: form.name,
+       email: form.email,
+       phone: form.phone,
+       tokenLength: firebaseIdToken.length,
+      });
 
       const registeredUser = await register({
         name: form.name.trim(),
@@ -150,18 +175,29 @@ export default function RegisterScreen() {
         password: form.password,
         phone: form.phone.trim(),
         firebaseIdToken,
-        termsSelections: Object.entries(selections).map(([termId, accepted]) => ({
-          termId,
-          accepted,
-        })),
+        termsSelections: Object.entries(selections).map(
+          ([termId, accepted]) => ({
+            termId,
+            accepted,
+          }),
+        ),
       });
 
-      await saveTermsSelection(registeredUser.userId, selections);
+      console.log("REGISTER SUCCESS");
+      console.log(registeredUser);
+
+      try {
+        await saveTermsSelection(registeredUser.userId, selections);
+      } catch {
+        // Terms persistence is best-effort so the user can continue into the app.
+      }
 
       setShowTerms(false);
       router.replace("/(protected)/home" as never);
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : "Registration failed.");
+      setSubmitError(
+        error instanceof Error ? error.message : "Registration failed.",
+      );
     } finally {
       setLoadingRegister(false);
     }
@@ -179,7 +215,9 @@ export default function RegisterScreen() {
           <AppInput
             label="Name"
             value={form.name}
-            onChangeText={(value) => setForm((prev) => ({ ...prev, name: value }))}
+            onChangeText={(value) =>
+              setForm((prev) => ({ ...prev, name: value }))
+            }
             error={errors.name}
           />
 
@@ -188,7 +226,9 @@ export default function RegisterScreen() {
             autoCapitalize="none"
             keyboardType="email-address"
             value={form.email}
-            onChangeText={(value) => setForm((prev) => ({ ...prev, email: value }))}
+            onChangeText={(value) =>
+              setForm((prev) => ({ ...prev, email: value }))
+            }
             error={errors.email}
           />
 
@@ -196,7 +236,9 @@ export default function RegisterScreen() {
             label="Password"
             secureTextEntry
             value={form.password}
-            onChangeText={(value) => setForm((prev) => ({ ...prev, password: value }))}
+            onChangeText={(value) =>
+              setForm((prev) => ({ ...prev, password: value }))
+            }
             error={errors.password}
           />
 
@@ -204,7 +246,9 @@ export default function RegisterScreen() {
             label="Phone"
             keyboardType="phone-pad"
             value={form.phone}
-            onChangeText={(value) => setForm((prev) => ({ ...prev, phone: value }))}
+            onChangeText={(value) =>
+              setForm((prev) => ({ ...prev, phone: value }))
+            }
             error={errors.phone}
             rightSlot={
               <InlineAction
@@ -219,7 +263,9 @@ export default function RegisterScreen() {
             label="OTP Code"
             keyboardType="number-pad"
             value={form.otpCode}
-            onChangeText={(value) => setForm((prev) => ({ ...prev, otpCode: value }))}
+            onChangeText={(value) =>
+              setForm((prev) => ({ ...prev, otpCode: value }))
+            }
             error={errors.otpCode}
             rightSlot={
               <InlineAction
@@ -231,13 +277,22 @@ export default function RegisterScreen() {
             }
           />
 
-          {firebaseIdToken ? <Text style={styles.success}>Phone number verified successfully.</Text> : null}
+          {firebaseIdToken ? (
+            <Text style={styles.success}>
+              Phone number verified successfully.
+            </Text>
+          ) : null}
           {submitError ? <Text style={styles.error}>{submitError}</Text> : null}
 
           <AppButton title="Create Account" onPress={handleOpenTerms} />
         </View>
 
-        <AuthFooterLink prompt="Already have an account?" linkText="Log in" href="/(auth)/login" />
+        <AuthFooterLink
+          prompt="Already have an account?"
+          linkText="Log in"
+          href="/(auth)/login"
+        />
+        <View nativeID="recaptcha-container" />
       </View>
 
       {showTerms ? (
@@ -247,6 +302,7 @@ export default function RegisterScreen() {
           onClose={() => setShowTerms(false)}
           onConfirm={handleConfirmTerms}
           loading={loadingRegister}
+          serverError={submitError}
         />
       ) : null}
     </Screen>

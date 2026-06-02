@@ -45,8 +45,38 @@ export async function login(payload: LoginRequest): Promise<AuthResponse> {
     };
   }
 
-  const response = await apiClient.post<AuthResponse>("/auth/login", payload);
-  return response.data;
+  try {
+    const response = await apiClient.post<AuthResponse>("/auth/login", payload);
+    return response.data;
+  } catch (error) {
+    const status = (error as { response?: { status?: number } })?.response?.status;
+
+    if (status !== 404) {
+      throw error;
+    }
+
+    const mockUser = await getMockUser();
+
+    if (!mockUser) {
+      throw new Error("Login endpoint is not available and no local user is cached. Please register first.");
+    }
+
+    const usernameMatch =
+      mockUser.user.email.toLowerCase() === payload.usernameOrEmail.toLowerCase() ||
+      mockUser.user.username === payload.usernameOrEmail;
+
+    if (!usernameMatch || payload.password !== mockUser.password) {
+      throw new Error("Invalid credentials.");
+    }
+
+    const tokens = createMockTokens();
+    await saveAuthSession(tokens, mockUser.user);
+
+    return {
+      user: mockUser.user,
+      tokens,
+    };
+  }
 }
 
 export async function register(payload: RegisterRequest): Promise<AuthResponse> {
@@ -74,12 +104,23 @@ export async function register(payload: RegisterRequest): Promise<AuthResponse> 
   }
 
   const response = await apiClient.post<AuthResponse>("/auth/register", payload);
+  await setStoredJson(MOCK_USER_KEY, {
+    user: response.data.user,
+    password: payload.password,
+  });
   return response.data;
 }
 
 export async function logout(refreshToken?: string): Promise<void> {
   if (getApiBaseUrl() && refreshToken) {
-    await apiClient.post("/auth/logout", { refreshToken });
+    try {
+      await apiClient.post("/auth/logout", { refreshToken });
+    } catch (error) {
+      const status = (error as { response?: { status?: number } })?.response?.status;
+      if (status !== 404) {
+        throw error;
+      }
+    }
   }
 
   await clearStoredSession();

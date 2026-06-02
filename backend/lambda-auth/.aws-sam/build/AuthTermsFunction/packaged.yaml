@@ -1,0 +1,264 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Auth service functions (per-function packaging recommended)
+Parameters:
+  UsersTableName:
+    Type: String
+    Default: Users
+  SessionsTableName:
+    Type: String
+    Default: Sessions
+  TermsTableName:
+    Type: String
+    Default: Terms
+  UserTermsTableName:
+    Type: String
+    Default: UserTerms
+  FirebaseSecretArn:
+    Type: String
+    Default: arn:aws:secretsmanager:us-east-1:123456789012:secret:firebase-secret
+  JwtSecretArn:
+    Type: String
+    Default: arn:aws:secretsmanager:us-east-1:123456789012:secret:jwt-secret
+  JwtIssuer:
+    Type: String
+    Default: auth-app-expo
+  JwtAudience:
+    Type: String
+    Default: auth-app-expo-users
+  AccessTokenExpiresSeconds:
+    Type: Number
+    Default: '900'
+  RefreshTokenExpiresSeconds:
+    Type: Number
+    Default: '1209600'
+Globals:
+  Function:
+    Runtime: nodejs24.x
+    Timeout: 10
+    MemorySize: 256
+Resources:
+  AuthRegisterFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: auth-register-function
+      Handler: handler.handler
+      CodeUri: s3://aws-sam-cli-managed-default-samclisourcebucket-5u5qo8vksxzz/068ac63839f204e1c670d451ef9a01bd
+      Environment:
+        Variables:
+          DYNAMO_USERS_TABLE:
+            Ref: UsersTableName
+          DYNAMO_SESSIONS_TABLE:
+            Ref: SessionsTableName
+          DYNAMO_TERMS_TABLE:
+            Ref: TermsTableName
+          DYNAMO_USER_TERMS_TABLE:
+            Ref: UserTermsTableName
+          FIREBASE_SERVICE_ACCOUNT_SECRET_ID: auth-app/firebase-service-account
+          JWT_PRIVATE_KEY_SECRET_ID: auth-app/jwt-keys
+          AUTH_ALLOW_MOCK_TOKEN: "true"
+          JWT_ISSUER:
+            Ref: JwtIssuer
+          JWT_AUDIENCE:
+            Ref: JwtAudience
+          ACCESS_TOKEN_EXPIRES_SECONDS:
+            Ref: AccessTokenExpiresSeconds
+          REFRESH_TOKEN_EXPIRES_SECONDS:
+            Ref: RefreshTokenExpiresSeconds
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: UsersTableName
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: SessionsTableName
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: TermsTableName
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: UserTermsTableName
+      - Statement:
+        - Effect: Allow
+          Action: secretsmanager:GetSecretValue
+          Resource:
+          - Ref: FirebaseSecretArn
+          - Ref: JwtSecretArn
+    Metadata:
+      SamResourceId: AuthRegisterFunction
+  AuthLoginFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: auth-login-function
+      Handler: handler.handler
+      CodeUri: s3://aws-sam-cli-managed-default-samclisourcebucket-5u5qo8vksxzz/5c67a281c221def00a86a1abf39d8ae6
+      Environment:
+        Variables:
+          DYNAMO_USERS_TABLE:
+            Ref: UsersTableName
+          DYNAMO_SESSIONS_TABLE:
+            Ref: SessionsTableName
+          JWT_PRIVATE_KEY_SECRET_ID: auth-app/jwt-keys
+          JWT_ISSUER:
+            Ref: JwtIssuer
+          JWT_AUDIENCE:
+            Ref: JwtAudience
+          ACCESS_TOKEN_EXPIRES_SECONDS:
+            Ref: AccessTokenExpiresSeconds
+          REFRESH_TOKEN_EXPIRES_SECONDS:
+            Ref: RefreshTokenExpiresSeconds
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: UsersTableName
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: SessionsTableName
+      - Statement:
+        - Effect: Allow
+          Action: secretsmanager:GetSecretValue
+          Resource:
+            Ref: JwtSecretArn
+    Metadata:
+      SamResourceId: AuthLoginFunction
+  AuthRefreshFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: auth-refresh-function
+      Handler: handler.handler
+      CodeUri: s3://aws-sam-cli-managed-default-samclisourcebucket-5u5qo8vksxzz/157fd0cee528841fdcadcc9423c6fe08
+      Environment:
+        Variables:
+          DYNAMO_USERS_TABLE:
+            Ref: UsersTableName
+          DYNAMO_SESSIONS_TABLE:
+            Ref: SessionsTableName
+          JWT_PRIVATE_KEY_SECRET_ID: auth-app/jwt-keys
+          JWT_ISSUER:
+            Ref: JwtIssuer
+          JWT_AUDIENCE:
+            Ref: JwtAudience
+          ACCESS_TOKEN_EXPIRES_SECONDS:
+            Ref: AccessTokenExpiresSeconds
+          REFRESH_TOKEN_EXPIRES_SECONDS:
+            Ref: RefreshTokenExpiresSeconds
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: UsersTableName
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: SessionsTableName
+      - Statement:
+        - Effect: Allow
+          Action: secretsmanager:GetSecretValue
+          Resource:
+            Ref: JwtSecretArn
+    Metadata:
+      SamResourceId: AuthRefreshFunction
+  AuthLogoutFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: auth-logout-function
+      Handler: handler.handler
+      CodeUri: s3://aws-sam-cli-managed-default-samclisourcebucket-5u5qo8vksxzz/2b4b68d93ad39a9308908189287441cc
+      Environment:
+        Variables:
+          DYNAMO_SESSIONS_TABLE:
+            Ref: SessionsTableName
+          JWT_PRIVATE_KEY_SECRET_ID: auth-app/jwt-keys
+          JWT_ISSUER:
+            Ref: JwtIssuer
+          JWT_AUDIENCE:
+            Ref: JwtAudience
+          ACCESS_TOKEN_EXPIRES_SECONDS:
+            Ref: AccessTokenExpiresSeconds
+          REFRESH_TOKEN_EXPIRES_SECONDS:
+            Ref: RefreshTokenExpiresSeconds
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: SessionsTableName
+    Metadata:
+      SamResourceId: AuthLogoutFunction
+  AuthTermsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: auth-terms-function
+      Handler: handler.handler
+      CodeUri: s3://aws-sam-cli-managed-default-samclisourcebucket-5u5qo8vksxzz/2a0698fc5a4151a22c0dfb430f6d52b8
+      Environment:
+        Variables:
+          DYNAMO_TERMS_TABLE:
+            Ref: TermsTableName
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: TermsTableName
+    Metadata:
+      SamResourceId: AuthTermsFunction
+  AuthUserTermsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: auth-user-terms-function
+      Handler: handler.handler
+      CodeUri: s3://aws-sam-cli-managed-default-samclisourcebucket-5u5qo8vksxzz/46119c7d6a26411cbb81c6a16e7cfe06
+      Environment:
+        Variables:
+          DYNAMO_USER_TERMS_TABLE:
+            Ref: UserTermsTableName
+          JWT_PRIVATE_KEY_SECRET_ID: auth-app/jwt-keys
+          JWT_ISSUER:
+            Ref: JwtIssuer
+          JWT_AUDIENCE:
+            Ref: JwtAudience
+          ACCESS_TOKEN_EXPIRES_SECONDS:
+            Ref: AccessTokenExpiresSeconds
+          REFRESH_TOKEN_EXPIRES_SECONDS:
+            Ref: RefreshTokenExpiresSeconds
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: UserTermsTableName
+      - Statement:
+        - Effect: Allow
+          Action: secretsmanager:GetSecretValue
+          Resource:
+            Ref: JwtSecretArn
+    Metadata:
+      SamResourceId: AuthUserTermsFunction
+  AuthProfileFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: auth-profile-function
+      Handler: handler.handler
+      CodeUri: s3://aws-sam-cli-managed-default-samclisourcebucket-5u5qo8vksxzz/7bfa83667708007624fd586e04db1c55
+      Environment:
+        Variables:
+          DYNAMO_USER_TERMS_TABLE:
+            Ref: UserTermsTableName
+          DYNAMO_USERS_TABLE:
+            Ref: UsersTableName
+          JWT_PRIVATE_KEY_SECRET_ID: auth-app/jwt-keys
+          JWT_ISSUER:
+            Ref: JwtIssuer
+          JWT_AUDIENCE:
+            Ref: JwtAudience
+          ACCESS_TOKEN_EXPIRES_SECONDS:
+            Ref: AccessTokenExpiresSeconds
+          REFRESH_TOKEN_EXPIRES_SECONDS:
+            Ref: RefreshTokenExpiresSeconds
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: UserTermsTableName
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: UsersTableName
+      - Statement:
+        - Effect: Allow
+          Action: secretsmanager:GetSecretValue
+          Resource:
+            Ref: JwtSecretArn
+    Metadata:
+      SamResourceId: AuthProfileFunction
