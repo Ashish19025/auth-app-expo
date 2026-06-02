@@ -20,57 +20,72 @@ function createMockTokens() {
   };
 }
 
-export async function login(payload: LoginRequest): Promise<AuthResponse> {
-  if (!getApiBaseUrl()) {
-    const mockUser = await getMockUser();
-
-    if (!mockUser) {
-      throw new Error("No registered user found. Please register first.");
-    }
-
-    const usernameMatch =
-      mockUser.user.email.toLowerCase() === payload.usernameOrEmail.toLowerCase() ||
-      mockUser.user.username === payload.usernameOrEmail;
-
-    if (!usernameMatch || payload.password !== mockUser.password) {
-      throw new Error("Invalid credentials.");
-    }
-
-    const tokens = createMockTokens();
-    await saveAuthSession(tokens, mockUser.user);
-
-    return {
-      user: mockUser.user,
-      tokens,
-    };
-  }
-
+export async function login(
+  payload: LoginRequest
+): Promise<AuthResponse> {
   try {
-    const response = await apiClient.post<AuthResponse>("/auth/login", payload);
-    return response.data;
+    const response = await apiClient.post(
+      "/auth/login",
+      payload
+    );
+
+    console.log("LOGIN RESPONSE");
+    console.log(
+      JSON.stringify(response.data, null, 2)
+    );
+
+    const result: AuthResponse = {
+      user: {
+        userId: response.data.user.id,
+        name: response.data.user.name,
+        email: response.data.user.email,
+        phone: response.data.user.phoneNumber,
+        username: response.data.user.email,
+      },
+      tokens: {
+        accessToken: response.data.accessToken,
+        refreshToken: response.data.refreshToken,
+      },
+    };
+
+    console.log("LOGIN RESULT");
+    console.log(result);
+
+    return result;
   } catch (error) {
-    const status = (error as { response?: { status?: number } })?.response?.status;
+    const status = (
+      error as {
+        response?: { status?: number };
+      }
+    )?.response?.status;
 
     if (status !== 404) {
       throw error;
     }
 
+    // Fallback to mock user only if API endpoint doesn't exist
     const mockUser = await getMockUser();
 
     if (!mockUser) {
-      throw new Error("Login endpoint is not available and no local user is cached. Please register first.");
+      throw new Error(
+        "Login endpoint is not available and no local user is cached. Please register first."
+      );
     }
 
     const usernameMatch =
-      mockUser.user.email.toLowerCase() === payload.usernameOrEmail.toLowerCase() ||
-      mockUser.user.username === payload.usernameOrEmail;
+      mockUser.user.email.toLowerCase() ===
+        payload.usernameOrEmail.toLowerCase() ||
+      mockUser.user.username ===
+        payload.usernameOrEmail;
 
-    if (!usernameMatch || payload.password !== mockUser.password) {
+    if (
+      !usernameMatch ||
+      payload.password !== mockUser.password
+    ) {
       throw new Error("Invalid credentials.");
     }
 
     const tokens = createMockTokens();
-    await saveAuthSession(tokens, mockUser.user);
 
     return {
       user: mockUser.user,
@@ -79,47 +94,61 @@ export async function login(payload: LoginRequest): Promise<AuthResponse> {
   }
 }
 
-export async function register(payload: RegisterRequest): Promise<AuthResponse> {
-  if (!getApiBaseUrl()) {
-    const user: AuthUser = {
-      userId: `user-${Date.now()}`,
-      name: payload.name,
-      email: payload.email,
-      phone: payload.phone,
-      username: payload.email,
-    };
+export async function register(
+  payload: RegisterRequest
+): Promise<AuthResponse> {
+  console.log("REGISTER REQUEST");
 
-    await setStoredJson(MOCK_USER_KEY, {
-      user,
-      password: payload.password,
-    });
+  const response = await apiClient.post(
+    "/auth/register",
+    payload
+  );
 
-    const tokens = createMockTokens();
-    await saveAuthSession(tokens, user);
+  console.log("REGISTER RESPONSE");
+  console.log(response.data);
 
-    return {
-      user,
-      tokens,
-    };
-  }
+  const result: AuthResponse = {
+    user: {
+      userId: response.data.user.id,
+      name: response.data.user.name,
+      email: response.data.user.email,
+      phone: response.data.user.phoneNumber,
+      username: response.data.user.email,
+    },
+    tokens: {
+      accessToken: response.data.accessToken,
+      refreshToken: response.data.refreshToken,
+    },
+  };
 
-  const response = await apiClient.post<AuthResponse>("/auth/register", payload);
+  console.log("REGISTER setStoredJson");
   await setStoredJson(MOCK_USER_KEY, {
-    user: response.data.user,
+    user: result.user,
     password: payload.password,
   });
-  return response.data;
+
+  console.log("REGISTER setStoredJson");
+  return result;
 }
 
-export async function logout(refreshToken?: string): Promise<void> {
-  if (getApiBaseUrl() && refreshToken) {
+export async function logout(): Promise<void> {
+  const session = await getStoredSession();
+
+  const accessToken = session.tokens?.accessToken;
+
+  if (getApiBaseUrl() && accessToken) {
     try {
-      await apiClient.post("/auth/logout", { refreshToken });
+      await apiClient.post(
+        "/auth/logout",
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
     } catch (error) {
-      const status = (error as { response?: { status?: number } })?.response?.status;
-      if (status !== 404) {
-        throw error;
-      }
+      console.error("LOGOUT ERROR", error);
     }
   }
 

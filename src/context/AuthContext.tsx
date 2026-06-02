@@ -83,9 +83,19 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }, []);
 
   const register = useCallback(async (payload: RegisterRequest) => {
-    const result = await authService.register(payload);
-    await saveAuthSession(result.tokens, result.user);
+  try {
+    console.log("AUTH CONTEXT REGISTER START");
 
+    const result = await authService.register(payload);
+
+    console.log("REGISTER RESULT:");
+    console.log(JSON.stringify(result, null, 2));
+
+    console.log("SAVING SESSION...");
+    await saveAuthSession(result.tokens, result.user);
+    console.log("SESSION SAVED");
+
+    console.log("UPDATING STATE...");
     setState({
       isLoading: false,
       isAuthenticated: true,
@@ -93,19 +103,27 @@ export function AuthProvider({ children }: PropsWithChildren) {
       tokens: result.tokens,
     });
 
+    console.log("STATE UPDATED");
+    console.log("AUTH CONTEXT REGISTER END");
+
     return result.user;
-  }, []);
+  } catch (error) {
+    console.error("AUTH CONTEXT REGISTER ERROR:");
+    console.error(error);
+    throw error;
+  }
+}, []);
 
   const logout = useCallback(async () => {
-    await authService.logout(state.tokens?.refreshToken);
+  await authService.logout();
 
-    setState({
-      isLoading: false,
-      isAuthenticated: false,
-      user: null,
-      tokens: null,
-    });
-  }, [state.tokens?.refreshToken]);
+  setState({
+    isLoading: false,
+    isAuthenticated: false,
+    user: null,
+    tokens: null,
+  });
+}, []);
 
   const value = useMemo<AuthContextType>(() => ({
     ...state,

@@ -30,7 +30,10 @@ export type RegisterRequest = {
 
 export type AuthResponse = {
   user: AuthUser;
-  tokens: AuthTokens;
+  tokens: {
+    accessToken: string;
+    refreshToken: string;
+  };
 };
 
 export type AuthState = {

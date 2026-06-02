@@ -1,115 +1,107 @@
-import { getApps, initializeApp } from "firebase/app";
-import {
-  ConfirmationResult,
-  getAuth,
-  RecaptchaVerifier,
-  signInWithPhoneNumber,
-} from "firebase/auth";
-import { Platform } from "react-native";
+import auth, {
+  FirebaseAuthTypes,
+} from "@react-native-firebase/auth";
+import { getApps } from "@react-native-firebase/app";
+console.log("FIREBASE APPS:", getApps().length);
 
-const firebaseConfig = {
-  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
-  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
-};
 
-let initialized = false;
+let confirmationResult: FirebaseAuthTypes.ConfirmationResult | null = null;
 
-export function ensureFirebaseInitialized(): void {
-  if (initialized) {
-    return;
-  }
 
-  if (
-    !firebaseConfig.apiKey ||
-    !firebaseConfig.projectId ||
-    !firebaseConfig.appId
-  ) {
-    return;
-  }
-
-  if (getApps().length === 0) {
-    initializeApp(firebaseConfig);
-  }
-
-  initialized = true;
-}
-
-export function getFirebaseAuth() {
-  ensureFirebaseInitialized();
-
-  if (getApps().length === 0) {
-    throw new Error(
-      "Firebase config missing. Set EXPO_PUBLIC_FIREBASE_* env vars.",
-    );
-  }
-
-  return getAuth();
-}
-
-let confirmationResult: ConfirmationResult | null = null;
-let recaptchaVerifier: RecaptchaVerifier | null = null;
-
-export async function requestPhoneOtp(phone: string): Promise<string> {
-  if (!phone.trim()) {
+/**
+ * Send OTP to phone number
+ */
+export async function requestPhoneOtp(
+  phone: string
+): Promise<string> {
+  if (!phone?.trim()) {
     throw new Error("Phone number is required.");
   }
 
-  if (Platform.OS !== "web") {
+  try {
+    console.log("SENDING OTP TO:", phone);
+
+    confirmationResult = await auth().signInWithPhoneNumber(phone);
+
+    console.log("OTP SENT SUCCESSFULLY");
+
+    return confirmationResult.verificationId ?? "otp-sent";
+  } catch (error: any) {
+    console.error("SEND OTP ERROR:", error);
+
     throw new Error(
-      "Real phone OTP requires ReCaptcha which only works on Web in Expo Go. Run the app on Web (press 'w' in terminal).",
+      error?.message || "Failed to send OTP"
     );
   }
-
-  const auth = getFirebaseAuth();
-
-  if (!recaptchaVerifier) {
-    recaptchaVerifier = new RecaptchaVerifier(
-      auth,
-      "recaptcha-container",
-      {
-        size: "invisible",
-      }
-    );
-  }
-
-  confirmationResult = await signInWithPhoneNumber(
-    auth,
-    phone,
-    recaptchaVerifier
-  );
-
-  console.log(
-    "OTP sent successfully. Verification ID:",
-    confirmationResult.verificationId
-  );
-
-  return confirmationResult.verificationId;
 }
 
+/**
+ * Verify OTP and return Firebase ID Token
+ */
 export async function verifyPhoneOtp(
-  verificationId: string,
+  _verificationId: string,
   code: string
 ): Promise<string> {
-  if (Platform.OS !== "web") {
-    throw new Error(
-      "Real phone OTP requires ReCaptcha which only works on Web in Expo Go. Run the app on Web (press 'w' in terminal).",
-    );
+  if (!code?.trim()) {
+    throw new Error("OTP is required.");
   }
 
   if (!confirmationResult) {
     throw new Error(
-      "No confirmation result found. Request OTP again."
+      "No OTP request found. Please request OTP again."
     );
   }
 
-  const result = await confirmationResult.confirm(code);
+  try {
+    console.log("VERIFYING OTP");
 
-  const token = await result.user.getIdToken();
+    const confirmation = confirmationResult;
 
-  console.log("REAL FIREBASE TOKEN LENGTH:", token.length);
-  console.log("USER UID:", result.user.uid);
+   const credential = await confirmation.confirm(code);
 
-  return token;
+if (!credential) {
+  throw new Error("OTP verification failed.");
+}
+
+const user = credential.user;
+
+if (!user) {
+  throw new Error("User not found.");
+}
+
+    const token = await user.getIdToken(true);
+
+    console.log(
+      "FIREBASE TOKEN LENGTH:",
+      token.length
+    );
+
+    console.log(
+      "USER UID:",
+      user.uid
+    );
+
+    return token;
+  } catch (error: any) {
+    console.error("VERIFY OTP ERROR:", error);
+
+    throw new Error(
+      error?.message || "OTP verification failed"
+    );
+  }
+}
+
+/**
+ * Current Firebase user
+ */
+export function getCurrentUser() {
+  return auth().currentUser;
+}
+
+/**
+ * Logout
+ */
+export async function signOutUser() {
+  await auth().signOut();
+  confirmationResult = null;
 }

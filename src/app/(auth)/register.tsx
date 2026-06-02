@@ -195,9 +195,12 @@ export default function RegisterScreen() {
       setShowTerms(false);
       router.replace("/(protected)/home" as never);
     } catch (error) {
-      setSubmitError(
-        error instanceof Error ? error.message : "Registration failed.",
-      );
+      const errorMessage = error instanceof Error ? error.message : "Registration failed.";
+      if (errorMessage.includes("User already exists")) {
+        setSubmitError("You already have an account. Please log in instead.");
+      } else {
+        setSubmitError(errorMessage);
+      }
     } finally {
       setLoadingRegister(false);
     }
@@ -292,8 +295,7 @@ export default function RegisterScreen() {
           linkText="Log in"
           href="/(auth)/login"
         />
-        <View nativeID="recaptcha-container" />
-      </View>
+     </View>
 
       {showTerms ? (
         <TermsModal

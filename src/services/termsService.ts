@@ -24,7 +24,16 @@ export async function saveTermsSelection(userId: string, selections: TermsSelect
     const accessToken = session.tokens?.accessToken;
     const headers = accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined;
 
-    await apiClient.post("/user/terms", { userId, accepted }, headers ? { headers } : undefined);
+    await apiClient.post("/user/terms/accept",
+  {
+    version: "1.0.0",
+  },
+  {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  }
+);
   } catch (error) {
     const status = (error as { response?: { status?: number } })?.response?.status;
 
