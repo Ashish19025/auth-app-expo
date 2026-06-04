@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL;
+const apiBaseUrl = "http://3.27.140.95" || process.env.EXPO_PUBLIC_API_BASE_URL;
 
 console.log("API BASE URL =", apiBaseUrl);
 

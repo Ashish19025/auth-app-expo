@@ -9,33 +9,40 @@ export async function fetchTerms(): Promise<TermsItem[]> {
   return DEFAULT_TERMS;
 }
 
-export async function saveTermsSelection(userId: string, selections: TermsSelections): Promise<void> {
+export async function saveTermsSelection(
+  userId: string,
+  selections: TermsSelections
+): Promise<void> {
   if (!getApiBaseUrl()) {
     return;
   }
 
-  const accepted = Object.entries(selections).map(([termId, selected]) => ({
-    termId,
-    accepted: selected,
-  }));
+  const termsSelections = Object.entries(selections).map(
+    ([termId, selected]) => ({
+      termId,
+      accepted: selected,
+    })
+  );
 
   try {
     const session = await getStoredSession();
     const accessToken = session.tokens?.accessToken;
-    const headers = accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined;
 
-    await apiClient.post("/user/terms/accept",
-  {
-    version: "1.0.0",
-  },
-  {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  }
-);
+    await apiClient.post(
+      "/user/terms/accept",
+      {
+        termsSelections,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
   } catch (error) {
-    const status = (error as { response?: { status?: number } })?.response?.status;
+    const status = (error as {
+      response?: { status?: number };
+    })?.response?.status;
 
     if (status === 404) {
       return;
