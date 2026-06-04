@@ -1,65 +1,107 @@
-import { getApps, initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import auth, {
+  FirebaseAuthTypes,
+} from "@react-native-firebase/auth";
+import { getApps } from "@react-native-firebase/app";
+console.log("FIREBASE APPS:", getApps().length);
 
-const firebaseConfig = {
-  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
-  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
-};
 
-let initialized = false;
+let confirmationResult: FirebaseAuthTypes.ConfirmationResult | null = null;
 
-export function ensureFirebaseInitialized(): void {
-  if (initialized) {
-    return;
+
+/**
+ * Send OTP to phone number
+ */
+export async function requestPhoneOtp(
+  phone: string
+): Promise<string> {
+  if (!phone?.trim()) {
+    throw new Error("Phone number is required.");
   }
 
-  if (!firebaseConfig.apiKey || !firebaseConfig.projectId || !firebaseConfig.appId) {
-    return;
-  }
+  try {
+    console.log("SENDING OTP TO:", phone);
 
-  if (getApps().length === 0) {
-    initializeApp(firebaseConfig);
-  }
+    confirmationResult = await auth().signInWithPhoneNumber(phone);
 
-  initialized = true;
+    console.log("OTP SENT SUCCESSFULLY");
+
+    return confirmationResult.verificationId ?? "otp-sent";
+  } catch (error: any) {
+    console.error("SEND OTP ERROR:", error);
+
+    throw new Error(
+      error?.message || "Failed to send OTP"
+    );
+  }
 }
 
-export function getFirebaseAuth() {
-  ensureFirebaseInitialized();
-
-  if (getApps().length === 0) {
-    throw new Error("Firebase config missing. Set EXPO_PUBLIC_FIREBASE_* env vars.");
+/**
+ * Verify OTP and return Firebase ID Token
+ */
+export async function verifyPhoneOtp(
+  _verificationId: string,
+  code: string
+): Promise<string> {
+  if (!code?.trim()) {
+    throw new Error("OTP is required.");
   }
 
-  return getAuth();
+  if (!confirmationResult) {
+    throw new Error(
+      "No OTP request found. Please request OTP again."
+    );
+  }
+
+  try {
+    console.log("VERIFYING OTP");
+
+    const confirmation = confirmationResult;
+
+   const credential = await confirmation.confirm(code);
+
+if (!credential) {
+  throw new Error("OTP verification failed.");
 }
 
-export async function requestPhoneOtp(phone: string): Promise<string> {
-  const useMockOtp = process.env.EXPO_PUBLIC_USE_MOCK_OTP === "true";
+const user = credential.user;
 
-  if (useMockOtp) {
-    if (!phone.trim()) {
-      throw new Error("Phone number is required.");
-    }
-
-    return "mock-verification-id";
-  }
-
-  throw new Error("Phone OTP for Expo managed workflow needs Firebase phone auth native setup. Keep EXPO_PUBLIC_USE_MOCK_OTP=true for assignment demo.");
+if (!user) {
+  throw new Error("User not found.");
 }
 
-export async function verifyPhoneOtp(verificationId: string, code: string): Promise<string> {
-  const useMockOtp = process.env.EXPO_PUBLIC_USE_MOCK_OTP === "true";
+    const token = await user.getIdToken(true);
 
-  if (useMockOtp) {
-    if (!verificationId || code.length < 4) {
-      throw new Error("Invalid OTP code.");
-    }
+    console.log(
+      "FIREBASE TOKEN LENGTH:",
+      token.length
+    );
 
-    return "mock-firebase-id-token";
+    console.log(
+      "USER UID:",
+      user.uid
+    );
+
+    return token;
+  } catch (error: any) {
+    console.error("VERIFY OTP ERROR:", error);
+
+    throw new Error(
+      error?.message || "OTP verification failed"
+    );
   }
+}
 
-  throw new Error("Phone OTP verification for Expo managed workflow needs Firebase phone auth native setup. Keep EXPO_PUBLIC_USE_MOCK_OTP=true for assignment demo.");
+/**
+ * Current Firebase user
+ */
+export function getCurrentUser() {
+  return auth().currentUser;
+}
+
+/**
+ * Logout
+ */
+export async function signOutUser() {
+  await auth().signOut();
+  confirmationResult = null;
 }

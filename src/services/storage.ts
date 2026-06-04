@@ -1,4 +1,5 @@
 import * as SecureStore from "expo-secure-store";
+import { Platform } from "react-native";
 
 import { AuthTokens, AuthUser } from "@/types/auth";
 
@@ -6,49 +7,107 @@ const ACCESS_TOKEN_KEY = "auth.accessToken";
 const REFRESH_TOKEN_KEY = "auth.refreshToken";
 const USER_KEY = "auth.user";
 
-export async function saveAuthSession(tokens: AuthTokens, user: AuthUser): Promise<void> {
-  await Promise.all([
-    SecureStore.setItemAsync(ACCESS_TOKEN_KEY, tokens.accessToken),
-    SecureStore.setItemAsync(REFRESH_TOKEN_KEY, tokens.refreshToken),
-    SecureStore.setItemAsync(USER_KEY, JSON.stringify(user)),
-  ]);
+async function setItem(key: string, value: string) {
+  if (Platform.OS === "web") {
+    localStorage.setItem(key, value);
+    return;
+  }
+  // Only call SecureStore on native platforms
+  await SecureStore.setItemAsync(key, value);
 }
 
-export async function getStoredSession(): Promise<{ tokens: AuthTokens | null; user: AuthUser | null }> {
-  const [accessToken, refreshToken, userJson] = await Promise.all([
-    SecureStore.getItemAsync(ACCESS_TOKEN_KEY),
-    SecureStore.getItemAsync(REFRESH_TOKEN_KEY),
-    SecureStore.getItemAsync(USER_KEY),
+async function getItem(key: string): Promise<string | null> {
+  if (Platform.OS === "web") {
+    return localStorage.getItem(key);
+  }
+  // Only call SecureStore on native platforms
+  return await SecureStore.getItemAsync(key);
+}
+
+async function removeItem(key: string) {
+  if (Platform.OS === "web") {
+    localStorage.removeItem(key);
+    return;
+  }
+  // Only call SecureStore on native platforms
+  await SecureStore.deleteItemAsync(key);
+}
+
+export async function saveAuthSession(
+  tokens: AuthTokens,
+  user: AuthUser
+): Promise<void> {
+  console.log("SAVING SESSION");
+
+  await Promise.all([
+    setItem(ACCESS_TOKEN_KEY, tokens.accessToken),
+    setItem(REFRESH_TOKEN_KEY, tokens.refreshToken),
+    setItem(USER_KEY, JSON.stringify(user)),
   ]);
 
-  const tokens = accessToken && refreshToken ? { accessToken, refreshToken } : null;
-  const user = userJson ? (JSON.parse(userJson) as AuthUser) : null;
+  console.log("SESSION SAVED");
+}
 
-  return { tokens, user };
+export async function getStoredSession(): Promise<{
+  tokens: AuthTokens | null;
+  user: AuthUser | null;
+}> {
+  const [accessToken, refreshToken, userJson] = await Promise.all([
+    getItem(ACCESS_TOKEN_KEY),
+    getItem(REFRESH_TOKEN_KEY),
+    getItem(USER_KEY),
+  ]);
+
+  let parsedUser: AuthUser | null = null;
+  if (userJson) {
+    try {
+      parsedUser = JSON.parse(userJson) as AuthUser;
+    } catch (error) {
+      console.error("Failed to parse user from storage", error);
+    }
+  }
+
+  return {
+    tokens:
+      accessToken && refreshToken
+        ? { accessToken, refreshToken }
+        : null,
+    user: parsedUser,
+  };
 }
 
 export async function clearStoredSession(): Promise<void> {
   await Promise.all([
-    SecureStore.deleteItemAsync(ACCESS_TOKEN_KEY),
-    SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY),
-    SecureStore.deleteItemAsync(USER_KEY),
+    removeItem(ACCESS_TOKEN_KEY),
+    removeItem(REFRESH_TOKEN_KEY),
+    removeItem(USER_KEY),
   ]);
 }
 
-export async function setStoredJson<T>(key: string, value: T): Promise<void> {
-  await SecureStore.setItemAsync(key, JSON.stringify(value));
+export async function setStoredJson<T>(
+  key: string,
+  value: T
+): Promise<void> {
+  await setItem(key, JSON.stringify(value));
 }
 
-export async function getStoredJson<T>(key: string): Promise<T | null> {
-  const rawValue = await SecureStore.getItemAsync(key);
+export async function getStoredJson<T>(
+  key: string
+): Promise<T | null> {
+  const rawValue = await getItem(key);
 
   if (!rawValue) {
     return null;
   }
 
-  return JSON.parse(rawValue) as T;
+  try {
+    return JSON.parse(rawValue) as T;
+  } catch (error) {
+    console.error(`Failed to parse JSON for key ${key}`, error);
+    return null;
+  }
 }
 
 export async function removeStoredKey(key: string): Promise<void> {
-  await SecureStore.deleteItemAsync(key);
-}
+  await removeItem(key);
+}   

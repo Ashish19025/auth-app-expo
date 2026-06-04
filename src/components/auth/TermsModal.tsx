@@ -11,9 +11,10 @@ type TermsModalProps = {
   loading?: boolean;
   onClose: () => void;
   onConfirm: (selections: TermsSelections) => Promise<void>;
+  serverError?: string;
 };
 
-export function TermsModal({ visible, terms, loading, onClose, onConfirm }: TermsModalProps) {
+export function TermsModal({ visible, terms, loading, onClose, onConfirm, serverError }: TermsModalProps) {
   const initialState = useMemo<TermsSelections>(() => {
     return terms.reduce<TermsSelections>((acc, item) => {
       acc[item.termId] = false;
@@ -23,6 +24,7 @@ export function TermsModal({ visible, terms, loading, onClose, onConfirm }: Term
 
   const [selections, setSelections] = useState<TermsSelections>(initialState);
   const [error, setError] = useState<string>("");
+  const [localServerError, setLocalServerError] = useState<string>("");
 
   function handleClose() {
     setSelections(initialState);
@@ -41,7 +43,12 @@ export function TermsModal({ visible, terms, loading, onClose, onConfirm }: Term
     }
 
     setError("");
-    await onConfirm(selections);
+    try {
+      setLocalServerError("");
+      await onConfirm(selections);
+    } catch (err) {
+      setLocalServerError(err instanceof Error ? err.message : String(err));
+    }
   }
 
   return (
@@ -82,6 +89,8 @@ export function TermsModal({ visible, terms, loading, onClose, onConfirm }: Term
           </View>
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
+          {serverError ? <Text style={styles.error}>{serverError}</Text> : null}
+          {localServerError ? <Text style={styles.error}>{localServerError}</Text> : null}
 
           <View style={styles.buttonRow}>
             <AppButton title="Cancel" variant="ghost" onPress={handleClose} disabled={loading} />
