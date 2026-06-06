@@ -87,6 +87,9 @@ export default function LoginScreen() {
 
           <AppButton title="Log In" onPress={handleLogin} loading={loading} />
         </View>
+        <Text>
+            {process.env.EXPO_PUBLIC_API_BASE_URL}
+        </Text>
 
         <AuthFooterLink prompt="No account yet?" linkText="Create one" href="/(auth)/register" />
       </View>

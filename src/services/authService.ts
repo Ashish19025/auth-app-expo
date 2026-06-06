@@ -25,7 +25,7 @@ export async function login(
 ): Promise<AuthResponse> {
   try {
     const response = await apiClient.post(
-      "/auth/login",
+      "http://3.27.140.95/auth/login",
       payload
     );
 
