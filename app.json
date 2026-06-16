@@ -14,6 +14,7 @@
       "package": "com.example.authappexpo",
       "usesCleartextTraffic": true,
       "googleServicesFile": "./google-services.json",
+      "usesCleartextTraffic": true,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
