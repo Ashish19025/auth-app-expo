@@ -52,4 +52,6 @@ example
 # EAS credentials (contains sensitive keystore passwords)
 credentials.json
 
-/.env  
+/.env
+
+/google-services.json
