@@ -53,3 +53,5 @@ example
 credentials.json
 
 /.env
+
+/google-services.json
