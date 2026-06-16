@@ -12,6 +12,7 @@
     },
     "android": {
       "package": "com.example.authappexpo",
+      "usesCleartextTraffic": true,
       "googleServicesFile": "./google-services.json",
       "usesCleartextTraffic": true,
       "adaptiveIcon": {
